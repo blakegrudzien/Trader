@@ -75,11 +75,17 @@ function fetchHistoricalData() {
     fetch(url)
         .then(response => {
             console.log('Response status:', response.status);
-            return response.text();
+            return response.text().then(text => {
+                console.log('Raw response:', text);  // Log the raw response
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return text;
+            });
         })
         .then(text => {
             const data = JSON.parse(text);
-            console.log("Received data:", data.slice(0, 5));  // Log first 5 entries
+            console.log("Parsed data:", data.slice(0, 5));  // Log first 5 entries of parsed data
             if (data.error) {
                 throw new Error(data.error);
             }

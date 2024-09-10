@@ -21,6 +21,7 @@
         </header>
         <main>
             <h2>Historical Data</h2>
+            <div id = "select-and-graph">
             <div id="data-controls">
                 <input type="text" id="symbol-input" placeholder="Enter stock symbol (e.g., AAPL)" required>
                 <input type="date" id="start-date" required>
@@ -30,9 +31,10 @@
             <div id="chart-container" style="width: 80%; height: 400px; margin: auto;">
                 <canvas id="stock-chart"></canvas>
             </div>
+          </div>
         </main>
         <footer>
-            <p>&copy; 2024 Trading Simulator</p>
+            <p id = "footer-text">&copy; 2024 Trading Simulator</p>
         </footer>
         <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     </body>

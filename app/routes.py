@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, current_app
+from flask import Blueprint, render_template, request, jsonify, current_app, Response
 from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
@@ -6,6 +6,14 @@ import numpy as np
 import json
 
 main = Blueprint('main', __name__)
+
+@main.route('/')
+def index():
+    return render_template('index.html')
+
+@main.route('/historical-data')
+def historical_data_page():
+    return render_template('historical_data.html')
 
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -18,15 +26,6 @@ class CustomJSONEncoder(json.JSONEncoder):
         elif pd.isna(obj):
             return None
         return super().default(obj)
-
-
-@main.route('/')
-def index():
-    return render_template('index.html')
-
-@main.route('/historical-data')
-def historical_data_page():
-    return render_template('historical_data.html')
 
 @main.route('/api/historical-data')
 def get_historical_data():
@@ -45,7 +44,8 @@ def get_historical_data():
         data = fetch_stock_data(symbol, start_date, end_date)
         processed_data = process_stock_data(data)
         
-        return json.dumps(processed_data, cls=CustomJSONEncoder)
+        json_data = json.dumps(processed_data, cls=CustomJSONEncoder)
+        return Response(json_data, mimetype='application/json')
     except Exception as e:
         current_app.logger.error(f"An error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -61,39 +61,22 @@ def process_stock_data(data):
     data = data.reset_index()
     data['Date'] = data['Date'].dt.strftime('%Y-%m-%d')
     data['Daily_Return'] = data['Close'].pct_change()
-    return data[['Date', 'Close', 'Daily_Return']].to_dict(orient='records')
-
-
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, datetime):
-            return obj.strftime('%Y-%m-%d')
-        if pd.isna(obj):
-            return None
-        return super(NpEncoder, self).default(obj)
-
+    
+    # Convert NaN values to None
+    data = data.where(pd.notna(data), None)
+    
+    result = data[['Date', 'Close', 'Daily_Return']].to_dict(orient='records')
+    
+    # Ensure all NaN values are converted to None
+    for item in result:
+        for key, value in item.items():
+            if pd.isna(value):
+                item[key] = None
+    
+    return result
 @main.route('/configure-simulation')
 def configure_simulation():
     return render_template('configure_simulation.html')
-
-def fetch_stock_data(symbol, start_date, end_date):
-    stock = yf.Ticker(symbol)
-    data = stock.history(start=start_date, end=end_date)
-    return data
-
-def process_stock_data(data):
-    data = data.reset_index()
-    data['Date'] = data['Date'].dt.strftime('%Y-%m-%d')
-    data['Daily_Return'] = data['Close'].pct_change()
-    return data[['Date', 'Close', 'Daily_Return']].to_dict(orient='records')
-
-
 
 @main.route('/run-simulation', methods=['POST'])
 def run_simulation():
@@ -108,7 +91,3 @@ def run_simulation():
             "max_drawdown": 12.3
         }
     }), 200
-
-
-
-
