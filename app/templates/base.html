@@ -1,12 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% block head %} {% endblock %}
-  <link rel = "stylesheet" href=" {{url_for('static', filename = 'css/main.css')}}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  {% block body %} {% endblock %}
+    <header>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('historical_data') }}">Historical Data</a></li>
+                <li><a href="{{ url_for('configure_simulation') }}">Configure Simulation</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>&copy; 2024 Trading Simulator</p>
+    </footer>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

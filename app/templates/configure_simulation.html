@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Simulation - Trading Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Trading Simulator</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('main.index') }}">Home</a></li>
+                <li><a href="{{ url_for('main.historical_data') }}">Historical Data</a></li>
+                <li><a href="{{ url_for('main.configure_simulation') }}">Configure Simulation</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <h2>Configure Simulation</h2>
+        <form id="simulation-form">
+            <label for="strategy">Trading Strategy:</label>
+            <select id="strategy" name="strategy" required>
+                <option value="buy-and-hold">Buy and Hold</option>
+                <option value="moving-average">Moving Average Crossover</option>
+                <!-- Add more strategies as needed -->
+            </select>
+
+            <label for="start-date">Start Date:</label>
+            <input type="date" id="start-date" name="start-date" required>
+
+            <label for="end-date">End Date:</label>
+            <input type="date" id="end-date" name="end-date" required>
+
+            <label for="initial-capital">Initial Capital:</label>
+            <input type="number" id="initial-capital" name="initial-capital" required>
+
+            <button type="submit">Run Simulation</button>
+        </form>
+        <div id="simulation-results" style="display: none;">
+            <h3>Simulation Results</h3>
+            <div id="results-content"></div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 Trading Simulator</p>
+    </footer>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
