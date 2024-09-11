@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Simulator</title>
+    <title>{% block title %}Trading Simulator{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <header>
+        <h1>Trading Simulator</h1>
         <nav>
             <ul>
-                <li><a href="{{ url_for('historical_data') }}">Historical Data</a></li>
-                <li><a href="{{ url_for('configure_simulation') }}">Configure Simulation</a></li>
+                <li><a href="{{ url_for('main.index') }}">Home</a></li>
+                <li><a href="{{ url_for('main.historical_data_page') }}">Historical Data</a></li>
+                <li><a href="{{ url_for('main.configure_simulation') }}">Configure Simulation</a></li>
             </ul>
         </nav>
     </header>
@@ -19,8 +21,9 @@
         {% block content %}{% endblock %}
     </main>
     <footer>
-        <p>&copy; 2024 Trading Simulator</p>
+        <p id="footer-text">2024 Trading Sim</p>
     </footer>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

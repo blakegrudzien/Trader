@@ -12,7 +12,7 @@
     <header>
         <h1>Trading Simulator</h1>
         <nav>
-            <ul>
+            <ul >
                 <li><a href="{{ url_for('main.index') }}">Home</a></li>
                 <li><a href="{{ url_for('main.historical_data_page') }}">Historical Data</a></li>
                 <li><a href="{{ url_for('main.configure_simulation') }}">Configure Simulation</a></li>
@@ -20,7 +20,7 @@
           </nav>
         </header>
         <main>
-            <h2>Historical Data</h2>
+            <h2 id = "h2">Historical Data</h2>
             <div id = "select-and-graph">
             <div id="data-controls">
                 <input type="text" id="symbol-input" placeholder="Enter stock symbol (e.g., AAPL)" required>
@@ -34,7 +34,7 @@
           </div>
         </main>
         <footer>
-            <p id = "footer-text">&copy; 2024 Trading Simulator</p>
+            <p id = "footer-text">2024 Trading Sim</p>
         </footer>
         <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     </body>

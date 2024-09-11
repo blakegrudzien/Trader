@@ -1,51 +1,109 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configure Simulation - Trading Simulator</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <header>
-        <h1>Trading Simulator</h1>
-        <nav>
-            <ul>
-                <li><a href="{{ url_for('main.index') }}">Home</a></li>
-                <li><a href="{{ url_for('main.historical_data') }}">Historical Data</a></li>
-                <li><a href="{{ url_for('main.configure_simulation') }}">Configure Simulation</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <h2>Configure Simulation</h2>
-        <form id="simulation-form">
-            <label for="strategy">Trading Strategy:</label>
-            <select id="strategy" name="strategy" required>
-                <option value="buy-and-hold">Buy and Hold</option>
-                <option value="moving-average">Moving Average Crossover</option>
-                <!-- Add more strategies as needed -->
-            </select>
+{% extends "base.html" %}
 
-            <label for="start-date">Start Date:</label>
-            <input type="date" id="start-date" name="start-date" required>
+{% block title %}Configure Simulation - Trading Simulator{% endblock %}
 
-            <label for="end-date">End Date:</label>
-            <input type="date" id="end-date" name="end-date" required>
-
-            <label for="initial-capital">Initial Capital:</label>
-            <input type="number" id="initial-capital" name="initial-capital" required>
-
-            <button type="submit">Run Simulation</button>
-        </form>
-        <div id="simulation-results" style="display: none;">
-            <h3>Simulation Results</h3>
-            <div id="results-content"></div>
+{% block content %}
+<h2>Configure Simulation</h2>
+<div id="simulation-form">
+    <form action="{{ url_for('main.run_simulation') }}" method="post">
+        <div class="strategy-selection">
+            <h3>Choose a Strategy</h3>
+            <div class="strategy-options">
+                <button type="button" class="strategy-btn" data-strategy="buy_and_hold">Buy and Hold</button>
+                <button type="button" class="strategy-btn" data-strategy="dollar_cost_averaging">Dollar Cost Averaging</button>
+                <button type="button" class="strategy-btn" data-strategy="value_investing">Value Investing</button>
+                <button type="button" class="strategy-btn" data-strategy="growth_investing">Growth Investing</button>
+                <button type="button" class="strategy-btn" data-strategy="custom">Custom Strategy</button>
+            </div>
         </div>
-    </main>
-    <footer>
-        <p>&copy; 2024 Trading Simulator</p>
-    </footer>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-</body>
-</html>
+
+        <div id="preset-params" class="hidden">
+            <!-- Fields for preset strategies -->
+            <div class="form-group">
+                <label for="symbol">Stock Symbol:</label>
+                <input type="text" id="symbol" name="symbol" placeholder="e.g., AAPL" required>
+            </div>
+            <div class="form-group">
+                <label for="start_date">Start Date:</label>
+                <input type="date" id="start_date" name="start_date" required>
+            </div>
+            <div class="form-group">
+                <label for="end_date">End Date:</label>
+                <input type="date" id="end_date" name="end_date" required>
+            </div>
+            <div class="form-group">
+                <label for="initial_investment">Initial Investment ($):</label>
+                <input type="number" id="initial_investment" name="initial_investment" min="0" step="0.01" required>
+            </div>
+        </div>
+
+        <div id="custom-params" class="hidden">
+            <!-- Fields for custom strategy -->
+            <div class="form-group">
+                <label for="industry">Industry:</label>
+                <select id="industry" name="industry">
+                    <option value="">Select an industry</option>
+                    <option value="tech">Technology</option>
+                    <option value="finance">Finance</option>
+                    <option value="healthcare">Healthcare</option>
+                    <!-- Add more industries -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="stock_type">Type of Stock:</label>
+                <select id="stock_type" name="stock_type">
+                    <option value="">Select stock type</option>
+                    <option value="growth">Growth</option>
+                    <option value="value">Value</option>
+                    <option value="dividend">Dividend</option>
+                    <!-- Add more types -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="investment_amount">Investment Amount ($):</label>
+                <input type="number" id="investment_amount" name="investment_amount" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="investment_frequency">Investment Frequency:</label>
+                <select id="investment_frequency" name="investment_frequency">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                </select>
+            </div>
+            <!-- Add more custom parameters as needed -->
+        </div>
+
+        <button type="submit" id="run-simulation" class="hidden">Run Simulation</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const strategyButtons = document.querySelectorAll('.strategy-btn');
+        const presetParams = document.getElementById('preset-params');
+        const customParams = document.getElementById('custom-params');
+        const runSimulationBtn = document.getElementById('run-simulation');
+
+        strategyButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                strategyButtons.forEach(btn => btn.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                if (this.dataset.strategy === 'custom') {
+                    presetParams.classList.add('hidden');
+                    customParams.classList.remove('hidden');
+                } else {
+                    presetParams.classList.remove('hidden');
+                    customParams.classList.add('hidden');
+                }
+                
+                runSimulationBtn.classList.remove('hidden');
+            });
+        });
+    });
+</script>
+{% endblock %}
