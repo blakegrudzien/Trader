@@ -1,135 +1,173 @@
-
-import sys
 import os
+import sys
+import logging
+from datetime import datetime
+import sqlite3
 
-# Add the parent directory to sys.path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from sqlalchemy import delete
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from app import db, create_app
+from app.models import StockData, MA50, MA100
+from sqlalchemy.exc import SQLAlchemyError
 
 
-import yfinance as yf
-import pandas as pd
-from datetime import datetime, timedelta
-from app import create_app, db
-from app.models import MovingAverage50, MovingAverage100
-from sqlalchemy import text, inspect
+def get_file_mod_time(file_path):
+    return datetime.fromtimestamp(os.path.getmtime(file_path))
 
-def fetch_stock_data(symbol, start_date, end_date):
+def test_database_write(db_path):
     try:
-        stock = yf.Ticker(symbol)
-        data = stock.history(start=start_date, end=end_date)
-        print(f"Fetched {len(data)} rows for {symbol}")
-        return data['Close']
-    except Exception as e:
-        print(f"Error fetching data for {symbol}: {e}")
-        return None
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, test_column TEXT)")
+        cursor.execute("INSERT INTO test_table (test_column) VALUES (?)", (datetime.now().isoformat(),))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"SQLite error: {e}")
+        return False
+    
 
-def calculate_moving_averages(data):
-    if data is None or len(data) == 0:
-        print("No data to calculate moving averages")
-        return None
-    ma_data = pd.DataFrame({
-        'MA50': data.rolling(window=50).mean(),
-        'MA100': data.rolling(window=100).mean()
-    })
-    print(f"Calculated MAs. First few rows: \n{ma_data.head()}")
-    return ma_data
 
-def ensure_column_exists(table, column_name):
-    with db.engine.connect() as conn:
-        inspector = inspect(db.engine)
-        if column_name not in [c['name'] for c in inspector.get_columns(table.__tablename__)]:
-            conn.execute(text(f"ALTER TABLE {table.__tablename__} ADD COLUMN {column_name} FLOAT"))
-            conn.commit()
-            print(f"Added column {column_name} to {table.__tablename__}")
-    db.metadata.clear()
-    db.reflect()
+def create_ma_tables():
+    # Get unique company symbols
+    companies = db.session.query(StockData.symbol).distinct().all()
+    companies = [company[0] for company in companies]
+
+    # Dynamically add columns for each company
+    for company in companies:
+        if not hasattr(MA50, company):
+            setattr(MA50, company, db.Column(db.Numeric(10, 2)))
+        if not hasattr(MA100, company):
+            setattr(MA100, company, db.Column(db.Numeric(10, 2)))
+
+    # Create the tables
+    db.create_all()
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def populate_ma_tables():
+    logger.info("Starting populate_ma_tables() function")
+    try:
+        # Get unique dates
+        logger.info("Querying unique dates from StockData")
+        dates = db.session.query(StockData.date).distinct().order_by(StockData.date).all()
+        dates = [date[0] for date in dates]
+        logger.info(f"Found {len(dates)} unique dates")
+
+        # Get unique company symbols
+        logger.info("Querying unique company symbols from StockData")
+        companies = db.session.query(StockData.symbol).distinct().all()
+        companies = [company[0] for company in companies]
+        logger.info(f"Found {len(companies)} unique companies")
+
+        if not dates or not companies:
+            logger.error("No dates or companies found in StockData. Aborting population.")
+            return
+
+        ma50_rows_added = 0
+        ma100_rows_added = 0
+
+        for date in dates:
+            logger.info(f"Processing date: {date}")
+            ma50_row = db.session.get(MA50, date) or MA50(date=date)
+            ma100_row = db.session.get(MA100, date) or MA100(date=date)
+
+            for company in companies:
+                logger.info(f"Processing company: {company} for date: {date}")
+                
+                ma50_value = db.session.query(StockData.ma_50).filter(
+                    StockData.symbol == company,
+                    StockData.date == date
+                ).first()
+                
+                ma100_value = db.session.query(StockData.ma_100).filter(
+                    StockData.symbol == company,
+                    StockData.date == date
+                ).first()
+
+                if ma50_value:
+                    logger.info(f"MA50 value found for {company} on {date}: {ma50_value[0]}")
+                    setattr(ma50_row, company, ma50_value[0])
+                else:
+                    logger.warning(f"No MA50 value found for {company} on {date}")
+
+                if ma100_value:
+                    logger.info(f"MA100 value found for {company} on {date}: {ma100_value[0]}")
+                    setattr(ma100_row, company, ma100_value[0])
+                else:
+                    logger.warning(f"No MA100 value found for {company} on {date}")
+
+            logger.info(f"Adding MA50 and MA100 rows for date: {date}")
+            db.session.add(ma50_row)
+            db.session.add(ma100_row)
+            
+            ma50_rows_added += 1
+            ma100_rows_added += 1
+
+            if ma50_rows_added % 100 == 0:
+                logger.info(f"Processed {ma50_rows_added} rows so far")
+                db.session.flush()  # Flush every 100 rows
+
+        logger.info("Committing changes to database")
+        db.session.commit()
+        logger.info(f"Changes committed. Total rows added: MA50: {ma50_rows_added}, MA100: {ma100_rows_added}")
+
+    except Exception as e:
+        logger.error(f"An error occurred in populate_ma_tables: {str(e)}")
+        db.session.rollback()
+        raise
+
+    finally:
+        logger.info("Finished populate_ma_tables() function")
+
+# After the populate_ma_tables() function, add these checks:
+def check_ma_tables():
+    logger.info("Checking MA tables after population")
+    try:
+        ma50_count = db.session.query(MA50).count()
+        ma100_count = db.session.query(MA100).count()
+        logger.info(f"Rows in MA50 table: {ma50_count}")
+        logger.info(f"Rows in MA100 table: {ma100_count}")
+
+        if ma50_count > 0:
+            sample_ma50 = db.session.query(MA50).first()
+            logger.info(f"Sample MA50 row: {sample_ma50.__dict__}")
+        if ma100_count > 0:
+            sample_ma100 = db.session.query(MA100).first()
+            logger.info(f"Sample MA100 row: {sample_ma100.__dict__}")
+    except Exception as e:
+        logger.error(f"Error checking MA tables: {str(e)}")
+
+def clear_ma_tables():
+    logger.info("Clearing MA50 and MA100 tables")
+    try:
+        db.session.execute(delete(MA50))
+        db.session.execute(delete(MA100))
+        db.session.commit()
+        logger.info("MA50 and MA100 tables cleared successfully")
+    except Exception as e:
+        logger.error(f"Error clearing MA tables: {str(e)}")
+        db.session.rollback()
+
+def setup_ma_tables():
+    create_ma_tables()
+    clear_ma_tables()  # Add this line to clear tables before populating
+    populate_ma_tables()
+
+if __name__ == '__main__':
     app = create_app()
     with app.app_context():
-        symbols = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'META']
-        
-        for symbol in symbols:
-            ensure_column_exists(MovingAverage50, symbol.lower())
-            ensure_column_exists(MovingAverage100, symbol.lower())
-        
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=365 * 5)  # 5 years of data
-        
-        for symbol in symbols:
-            print(f"Processing {symbol}...")
-            
-            stock_data = fetch_stock_data(symbol, start_date, end_date)
-            if stock_data is None:
-                continue
-            
-            ma_data = calculate_moving_averages(stock_data)
-            if ma_data is None:
-                continue
-            
-            # Verify data at multiple points
-            verification_points = [0, len(ma_data)//2, -1]  # Start, middle, end
-            
-            for i, (date, row) in enumerate(ma_data.iterrows()):
-                try:
-                    # 50-day MA
-                    ma50_record = MovingAverage50.query.filter_by(date=date.date()).first()
-                    if not ma50_record:
-                        ma50_record = MovingAverage50(date=date.date())
-                        db.session.add(ma50_record)
-                    setattr(ma50_record, symbol.lower(), row['MA50'])
-                    
-                    # 100-day MA
-                    ma100_record = MovingAverage100.query.filter_by(date=date.date()).first()
-                    if not ma100_record:
-                        ma100_record = MovingAverage100(date=date.date())
-                        db.session.add(ma100_record)
-                    setattr(ma100_record, symbol.lower(), row['MA100'])
-                    
-                    # Verify data at specific points
-                    if i in verification_points:
-                        print(f"Verification for {symbol} on {date.date()}:")
-                        print(f"50-day MA: {getattr(ma50_record, symbol.lower())}")
-                        print(f"100-day MA: {getattr(ma100_record, symbol.lower())}")
-                        print("---")
-                    
-                    # Commit every 100 records
-                    if i % 100 == 0:
-                        db.session.commit()
-                        print(f"Committed batch for {symbol} (record {i})")
-                
-                except Exception as e:
-                    print(f"Error processing {symbol} for date {date}: {e}")
-                    db.session.rollback()
-            
-            try:
-                db.session.commit()
-                print(f"Final commit for {symbol}")
-            except Exception as e:
-                db.session.rollback()
-                print(f"Error in final commit for {symbol}: {e}")
-        
-        print("All data has been processed.")
-
-        # Final verification
-        print("\nFinal Data Verification:")
-        for symbol in symbols:
-            latest_50 = MovingAverage50.query.order_by(MovingAverage50.date.desc()).first()
-            latest_100 = MovingAverage100.query.order_by(MovingAverage100.date.desc()).first()
-            if latest_50 and latest_100:
-                print(f"{symbol}:")
-                print(f"Latest 50-day MA ({latest_50.date}): {getattr(latest_50, symbol.lower())}")
-                print(f"Latest 100-day MA ({latest_100.date}): {getattr(latest_100, symbol.lower())}")
-
-        
-                print("---")
-def inspect_db_schema():
-    inspector = inspect(db.engine)
-    for table_name in inspector.get_table_names():
-        print(f"\nTable: {table_name}")
-        for column in inspector.get_columns(table_name):
-            print(f"  {column['name']}: {column['type']}")
-
-if __name__ == "__main__":
-    populate_ma_tables()
-    inspect_db_schema()
+        try:
+            setup_ma_tables()
+            check_ma_tables()  # This function remains the same as in the previous response
+        except Exception as e:
+            logger.error(f"An error occurred: {str(e)}")

@@ -12,18 +12,15 @@ class Portfolio(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('portfolios', lazy=True))
 
-class MovingAverages(db.Model):
-    __tablename__ = 'moving_averages'
-    
-    date = db.Column(db.Date, primary_key=True)
 
-class MovingAverage50(db.Model):
+
+class MA50(db.Model):
     __tablename__ = 'moving_average_50'
     
     date = db.Column(db.Date, primary_key=True)
     # Columns for companies will be added dynamically
 
-class MovingAverage100(db.Model):
+class MA100(db.Model):
     __tablename__ = 'moving_average_100'
     
     date = db.Column(db.Date, primary_key=True)

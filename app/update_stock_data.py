@@ -52,7 +52,7 @@ def fetch_and_process_stock_data(symbol):
                         date=date.date(),
                         close_price=row['Close'],
                         ma_50=row['MA50'],
-                        ma_100 = row['MA50'],
+                        ma_100 = row['MA100'],
                         volume=row['Volume']
                     )
                     stmt = stmt.on_conflict_do_update(
@@ -60,6 +60,7 @@ def fetch_and_process_stock_data(symbol):
                         set_=dict(
                             close_price=stmt.excluded.close_price,
                             ma_50=stmt.excluded.ma_50,
+                            ma_100=stmt.excluded.ma_100,
                             volume=stmt.excluded.volume
                         )
                     )
