@@ -1,5 +1,18 @@
 from sqlalchemy import UniqueConstraint
 from . import db
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import column_property
+
+
+class DynamicBase:
+    @declared_attr
+    def __tablename__(cls):
+        return cls.__name__.lower()
+
+    @classmethod
+    def __declare_last__(cls):
+        for name, column in cls.additional_columns.items():
+            setattr(cls, name, column_property(column))
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -14,21 +27,18 @@ class Portfolio(db.Model):
 
 
 
-class MA50(db.Model):
-    __tablename__ = 'moving_average_50'
-    
+class MA50(DynamicBase, db.Model):
     date = db.Column(db.Date, primary_key=True)
-    # Columns for companies will be added dynamically
+    additional_columns = {}
 
-class MA100(db.Model):
-    __tablename__ = 'moving_average_100'
-    
+class MA100(DynamicBase, db.Model):
     date = db.Column(db.Date, primary_key=True)
+    additional_columns = {}
 
 def add_company_column(model, company_symbol):
-    column_name = f"{company_symbol.lower()}"
-    if not hasattr(model, column_name):
-        setattr(model, column_name, db.Column(db.Float))
+    column_name = company_symbol.lower()
+    if column_name not in model.additional_columns:
+        model.additional_columns[column_name] = db.Column(db.Float)
 
 class StockData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
