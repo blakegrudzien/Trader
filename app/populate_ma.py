@@ -13,61 +13,7 @@ logger = logging.getLogger(__name__)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import db, create_app
-from app.models import StockData, MA50, MA100
-
-def create_ma_tables():
-    logger.info("Starting create_ma_tables() function")
-    
-    companies = db.session.query(StockData.symbol).distinct().all()
-    companies = [company[0] for company in companies]
-    logger.info(f"Found {len(companies)} unique companies")
-
-    inspector = inspect(db.engine)
-    
-    for model in [MA50, MA100]:
-        table_name = model.__tablename__
-        if not inspector.has_table(table_name):
-            logger.info(f"Creating table {table_name}")
-            metadata = MetaData()
-            Table(table_name, metadata,
-                  Column('date', Date, primary_key=True),
-                  *(Column(f'"{company.lower()}"', Float) for company in companies)
-            )
-            metadata.create_all(db.engine)
-        else:
-            logger.info(f"Table {table_name} already exists")
-
-        existing_columns = set(column['name'] for column in inspector.get_columns(table_name))
-        for company in companies:
-            column_name = company.lower()
-            if column_name not in existing_columns:
-                logger.info(f"Adding column {column_name} to {table_name}")
-                with db.engine.connect() as conn:
-                    conn.execute(text(f'ALTER TABLE {table_name} ADD COLUMN "{column_name}" FLOAT'))
-                    conn.commit()
-
-    db.Model.metadata.reflect(db.engine)
-    logger.info("Refreshed database metadata")
-
-def print_table_schema():
-    logger.info("Printing table schema")
-    inspector = inspect(db.engine)
-    for table_name in ['moving_average_50', 'moving_average_100']:
-        columns = inspector.get_columns(table_name)
-        logger.info(f"Schema for {table_name}:")
-        for column in columns:
-            logger.info(f"  {column['name']}: {column['type']}")
-
-def clear_ma_tables():
-    logger.info("Clearing MA50 and MA100 tables")
-    try:
-        db.session.execute(delete(MA50))
-        db.session.execute(delete(MA100))
-        db.session.commit()
-        logger.info("MA50 and MA100 tables cleared successfully")
-    except Exception as e:
-        logger.error(f"Error clearing MA tables: {str(e)}")
-        db.session.rollback()
+from app.models import StockData, MA50, MA100, Daily_price
 
 
 def check_row_count():
@@ -219,69 +165,7 @@ def populate_ma_tables():
 
     logger.info("populate_ma_tables completed")
 
-def insert_test_record():
-    logger.info("Inserting test record using raw SQL")
-    try:
-        with db.engine.connect() as conn:
-            conn.execute(text("""
-                INSERT INTO moving_average_50 (date, aapl, googl)
-                VALUES (:date, :aapl, :googl)
-            """), {"date": "2000-01-01", "aapl": 150.5, "googl": 2800.75})
-            conn.execute(text("""
-                INSERT INTO moving_average_100 (date, aapl, googl)
-                VALUES (:date, :aapl, :googl)
-            """), {"date": "2000-01-01", "aapl": 148.5, "googl": 2750.75})
-        logger.info("Test records inserted successfully")
-    except Exception as e:
-        logger.error(f"Error inserting test records: {str(e)}")
 
-def verify_final_commit():
-    logger.info("Verifying final commit...")
-    try:
-        last_ma50 = db.session.query(MA50).order_by(MA50.date.desc()).first()
-        if last_ma50:
-            logger.info(f"Last MA50 entry (date: {last_ma50.date}):")
-            for key, value in last_ma50.__dict__.items():
-                if key != '_sa_instance_state' and key != 'date' and value is not None:
-                    logger.info(f"  {key}: {value}")
-        else:
-            logger.warning("No entries found in MA50 table")
-
-        last_ma100 = db.session.query(MA100).order_by(MA100.date.desc()).first()
-        if last_ma100:
-            logger.info(f"Last MA100 entry (date: {last_ma100.date}):")
-            for key, value in last_ma100.__dict__.items():
-                if key != '_sa_instance_state' and key != 'date' and value is not None:
-                    logger.info(f"  {key}: {value}")
-        else:
-            logger.warning("No entries found in MA100 table")
-    except Exception as e:
-        logger.error(f"Error verifying final commit: {str(e)}")
-
-def check_stock_data():
-    logger.info("Checking StockData table")
-    total_rows = db.session.query(StockData).count()
-    logger.info(f"Total rows in StockData: {total_rows}")
-
-    non_null_ma50 = db.session.query(StockData).filter(StockData.ma_50 != None).count()
-    non_null_ma100 = db.session.query(StockData).filter(StockData.ma_100 != None).count()
-    logger.info(f"Rows with non-null MA50: {non_null_ma50}")
-    logger.info(f"Rows with non-null MA100: {non_null_ma100}")
-
-    sample = db.session.query(StockData).filter(
-        StockData.ma_50 != None, 
-        StockData.ma_100 != None
-    ).first()
-    if sample:
-        logger.info(f"Sample StockData row: {sample.__dict__}")
-    else:
-        logger.warning("No rows found with both MA50 and MA100 non-null")
-
-    date_range = db.session.query(db.func.min(StockData.date), db.func.max(StockData.date)).first()
-    logger.info(f"Date range in StockData: {date_range}")
-
-    companies = db.session.query(StockData.symbol).distinct().count()
-    logger.info(f"Number of unique companies in StockData: {companies}")
 
 def create_or_update_tables():
     # Use the same stock checking logic as in populate_ma_tables
@@ -294,7 +178,7 @@ def create_or_update_tables():
     
     available_stocks = [row[0] for row in db.session.execute(text(check_stocks_sql)).fetchall()]
     
-    for table in ['moving_average_50', 'moving_average_100']:
+    for table in ['Daily_price']:
         columns = [f"{sanitize_column_name(stock)} FLOAT" for stock in available_stocks]
         columns_sql = ", ".join(columns)
         

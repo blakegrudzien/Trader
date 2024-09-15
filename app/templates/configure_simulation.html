@@ -9,11 +9,8 @@
         <div class="strategy-selection">
             <h3>Choose a Strategy</h3>
             <div class="strategy-options">
-                <button type="button" class="strategy-btn" data-strategy="50_day_moving_average">50 Day Moving Average</button>
-                <button type="button" class="strategy-btn" data-strategy="100_day_moving_average">Dollar Cost Averaging</button>
-                <button type="button" class="strategy-btn" data-strategy="reversion_to_the_mean">Reversion to the Mean (Coming Soon)</button>
-                <button type="button" class="strategy-btn" data-strategy="growth_investing">Growth Investing</button>
-                <button type="button" class="strategy-btn" data-strategy="custom">Custom Strategy</button>
+                <button type="button" class="strategy-btn" data-strategy="50_day_vs_100_day">50 Day vs 100 Day</button>
+
             </div>
         </div>
 
@@ -87,6 +84,7 @@
         const presetParams = document.getElementById('preset-params');
         const customParams = document.getElementById('custom-params');
         const runSimulationBtn = document.getElementById('run-simulation');
+        const form = document.querySelector('form');
 
         strategyButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -104,6 +102,48 @@
                 runSimulationBtn.classList.remove('hidden');
             });
         });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            formData.append('strategy', document.querySelector('.strategy-btn.selected').dataset.strategy);
+
+            fetch('{{ url_for("main.run_simulation") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    displayResults(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while running the simulation.');
+            });
+        });
+
+        function displayResults(data) {
+            // Create a results div if it doesn't exist
+            let resultsDiv = document.getElementById('simulation-results');
+            if (!resultsDiv) {
+                resultsDiv = document.createElement('div');
+                resultsDiv.id = 'simulation-results';
+                document.querySelector('#simulation-form').after(resultsDiv);
+            }
+
+            // Display the results
+            resultsDiv.innerHTML = `
+                <h3>Simulation Results</h3>
+                <p>Final Portfolio Value: $${data.final_value.toFixed(2)}</p>
+                <p>Total Return: ${data.total_return.toFixed(2)}%</p>
+            `;
+
+            // You can add more detailed results here, such as a chart of daily prices
+        }
     });
 </script>
 {% endblock %}

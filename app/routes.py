@@ -4,6 +4,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import json
+from app.trading import MA50_optimistic
 
 main = Blueprint('main', __name__)
 
@@ -78,16 +79,24 @@ def process_stock_data(data):
 def configure_simulation():
     return render_template('configure_simulation.html')
 
-@main.route('/run-simulation', methods=['POST'])
+
+@main.route('/run_simulation', methods=['POST'])
 def run_simulation():
-    data = request.json
-    # Process the simulation based on the received data
-    # For now, we'll just return a dummy response
-    return jsonify({
-        "message": "Simulation completed",
-        "results": {
-            "total_return": 15.5,
-            "annualized_return": 7.2,
-            "max_drawdown": 12.3
-        }
-    }), 200
+    strategy = request.form.get('strategy')
+    if strategy == '50_day_vs_100_day':
+        symbol = request.form['symbol']
+        start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d')
+        end_date = datetime.strptime(request.form['end_date'], '%Y-%m-%d')
+        initial_investment = float(request.form['initial_investment'])
+
+        final_value, daily_prices = MA50_optimistic(symbol, start_date, end_date, initial_investment)
+        
+        total_return = ((final_value - initial_investment) / initial_investment) * 100
+
+        return jsonify({
+            'final_value': final_value,
+            'total_return': total_return,
+            'daily_prices': [(date.strftime('%Y-%m-%d'), price) for date, price in daily_prices]
+        })
+    else:
+        return jsonify({'error': 'Unsupported strategy'}), 400

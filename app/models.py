@@ -25,7 +25,9 @@ class Portfolio(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('portfolios', lazy=True))
 
-
+class Daily_price(DynamicBase, db.Model):
+    date = db.Column(db.Date, primary_key=True)
+    additional_columns = {}
 
 class MA50(DynamicBase, db.Model):
     date = db.Column(db.Date, primary_key=True)
@@ -55,3 +57,15 @@ class StockData(db.Model):
 
     def __repr__(self):
         return f"<StockData {self.symbol} {self.date}>"
+    
+
+class TradingResult(db.Model):
+    __tablename__ = 'trading_results'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    symbol = db.Column(db.String(10), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    cumulative_return = db.Column(db.Numeric(10, 2), nullable=False)
+    
+    def __repr__(self):
+        return f"<TradingResult {self.symbol} {self.date} {self.cumulative_return}>"
