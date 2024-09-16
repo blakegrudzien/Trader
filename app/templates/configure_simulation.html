@@ -136,7 +136,7 @@
             if (!resultsDiv) {
                 resultsDiv = document.createElement('div');
                 resultsDiv.id = 'simulation-results';
-                document.querySelector('#simulation-form').after(resultsDiv);
+                document.querySelector('#simulation-form').prepend(resultsDiv);
             }
 
             // Display the results
