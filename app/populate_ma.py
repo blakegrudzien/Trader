@@ -344,12 +344,24 @@ def create_or_update_tables():
             db.session.rollback()
             logger.error(f"Error creating or updating table {table}: {str(e)}")
 
+def delete_ma_tables():
+    logger.info("Deleting moving average tables")
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS moving_average_50"))
+            conn.execute(text("DROP TABLE IF EXISTS moving_average_100"))
+            conn.commit()
+        logger.info("Moving average tables deleted successfully")
+    except Exception as e:
+        logger.error(f"Error deleting moving average tables: {str(e)}")
+
 
 if __name__ == '__main__':
     app = create_app()
     with app.app_context():
         try:
             print(f"Database file path: {app.config['SQLALCHEMY_DATABASE_URI']}")
+            delete_ma_tables()
             create_or_update_tables()
             populate_ma_tables()
             check_row_count()
