@@ -7,9 +7,12 @@
 <div id="simulation-form">
     <form action="{{ url_for('main.run_simulation') }}" method="post">
         <div class="strategy-selection">
-            <h3>Choose a Strategy</h3>
+            <h3>Choose a Strategy (More Coming Soon)</h3>
             <div class="strategy-options">
-                <button type="button" class="strategy-btn" data-strategy="50_day_vs_100_day">50 Day vs 100 Day</button>
+                <button type="button" class="strategy-btn" data-strategy="50_day_vs_100_day">50 Day vs 100 Day ()</button>
+                <p class="strategy-description" id="desc-50_day_vs_100_day" >
+                    Buy when the 50 day moving average is above the 100 day moving average, sell when it drops below
+                </p>
 
             </div>
         </div>
@@ -19,6 +22,7 @@
             <div class="form-group">
                 <label for="symbol">Stock Symbol:</label>
                 <input type="text" id="symbol" name="symbol" placeholder="e.g., AAPL" required>
+                
             </div>
             <div class="form-group">
                 <label for="start_date">Start Date:</label>

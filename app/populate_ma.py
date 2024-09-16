@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import db, create_app
-from app.models import StockData, MA50, MA100, Daily_price
+from app.models import StockData, MA50, MA100
 
 
 def check_row_count():
@@ -48,7 +48,7 @@ def populate_ma_tables():
     logger.info("Starting populate_ma_tables() function")
     
     # Top stocks we're interested in
-    top_stocks = ['A', 'AAL', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK', 'AEE', 'AEP', 
+    top_stocks = ['^SPX','A', 'AAL', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK', 'AEE', 'AEP', 
             'AES', 'AFL', 'AIG', 'AIV', 'AIZ', 'AJG', 'AMAT', 'AMD', 'AME', 'AMGN', 'AMP', 'AMT', 'AMZN', 'AON', 'AOS', 
             'APA', 'APD', 'APH', 'APL', 'APTV', 'ARDX', 'ARE', 'ARNC', 'ATO', 'ATVI', 'AVB', 'AVGO', 'AVY', 'AWK', 'AWR', 
             'AXP', 'BA', 'BAC', 'BAX', 'BBWI', 'BBY', 'BDX', 'BE', 'BEN', 'BG', 'BHI', 'BIDU', 'BIG', 'BIIB', 
@@ -165,6 +165,22 @@ def populate_ma_tables():
 
     logger.info("populate_ma_tables completed")
 
+def insert_test_record():
+    logger.info("Inserting test record using raw SQL")
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(text("""
+                INSERT INTO moving_average_50 (date, aapl, googl)
+                VALUES (:date, :aapl, :googl)
+            """), {"date": "2000-01-01", "aapl": 150.5, "googl": 2800.75})
+            conn.execute(text("""
+                INSERT INTO moving_average_100 (date, aapl, googl)
+                VALUES (:date, :aapl, :googl)
+            """), {"date": "2000-01-01", "aapl": 148.5, "googl": 2750.75})
+        logger.info("Test records inserted successfully")
+    except Exception as e:
+        logger.error(f"Error inserting test records: {str(e)}")
+
 
 
 def create_or_update_tables():
@@ -178,7 +194,7 @@ def create_or_update_tables():
     
     available_stocks = [row[0] for row in db.session.execute(text(check_stocks_sql)).fetchall()]
     
-    for table in ['Daily_price']:
+    for table in ['moving_average_50', 'moving_average_100']:
         columns = [f"{sanitize_column_name(stock)} FLOAT" for stock in available_stocks]
         columns_sql = ", ".join(columns)
         
