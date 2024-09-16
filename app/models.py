@@ -30,10 +30,12 @@ class Daily_price(DynamicBase, db.Model):
     additional_columns = {}
 
 class MA50(DynamicBase, db.Model):
+    __tablename__ = 'moving_average_50'
     date = db.Column(db.Date, primary_key=True)
     additional_columns = {}
 
 class MA100(DynamicBase, db.Model):
+    __tablename__ = 'moving_average_100'
     date = db.Column(db.Date, primary_key=True)
     additional_columns = {}
 
